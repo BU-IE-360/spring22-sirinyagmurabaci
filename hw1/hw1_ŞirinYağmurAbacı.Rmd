@@ -1,0 +1,110 @@
+---
+title: "HW1_ŞirinYağmurAbacı"
+author: "Şirin Yağmur Abacı"
+date: '2022-04-15'
+output: html_document
+---
+This assignment mainly consists of three parts. First of all, three different datasets that are thought to be relevant are chosen. Then, the datas are plotted individually to observe their distribution throughout time. As a final step, correlation between the three datasets was analyzed.(Google trends data part of this assignment couldn't be presented due to some problems I have encountered.)
+
+
+```{r setup, include=FALSE,results="hide", warning=FALSE, message=FALSE}
+library(readxl)
+library(ggplot2)    
+library(ggfortify)  
+library(forecast)   
+library(xts)        
+library(ggcorrplot) 
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+library(zoo)
+library(lubridate)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Introduction 
+Turkey's economical status has always been a hot topic, due to unexpected political events and their effects on Turkish economy. However, in recent years some of the economical parameters tend to fluctuate or rise susbtantially in a relatively short period of time. One of the major changed happened in USD/TRY exchange rate, and this affected the Turkish economy in countless ways. Nowadays, unemployement rate is also an important issue considering there are many non-qualified universities opening. Lastly, residential property price index is a measure of the price changes of residential housing as a percentage change from some specific start date. In other words, it reflects the inflation rate to an extent.
+
+This assignment's purpose is to observe these three datasets and analyze their correlations. At the start of the assignment, the data sets were retrieved from the Central Bank of the Republic of Turkey's [Electronic Data Delivery System](https://evds2.tcmb.gov.tr). The data sets were USD/TRY exchange rate(buying), residential property price index and unemployement rate, all from 2014 to 2022 on a monthly frequency.
+In order to do proper and clean calculations, the datasets needed to be manipulated in an appropriate form:
+
+```{r data manipulation, echo=FALSE,results="hide"}
+Sys.setlocale("LC_TIME", "English")
+
+hw1data <- read.csv("C:/Users/lenovo/Desktop/IE360-hw1data.csv")
+
+# Column names are changed.
+colnames(hw1data) <- c("Date","Unemployement Rate","USD Exchange Rate(Buying)","Residential Property Price Index")
+
+#"Date" column is converted from character to yearmon 
+hw1data$Date <- as.yearmon(x = hw1data$Date)
+
+# A time series object is created from the obtained data
+data_xts <- xts(x = hw1data[-1],order.by = hw1data$Date,frequency = 12)
+
+```
+
+
+## 2. Analysis
+
+```{r plots1, echo=FALSE,warning=FALSE, message=FALSE}
+ #Graph plots
+  ggplot(hw1data,aes(x=Date))+
+    geom_line(size=1,color="green",aes(y=`Unemployement Rate`))+
+    ggtitle("Time Series of Unemployement Rate",
+            subtitle="Between the Years 2014-2022")
+  
+  ggplot(hw1data,aes(x=Date))+
+    geom_line(size=1,color="pink",aes(y=`USD Exchange Rate(Buying)`))+
+    ggtitle("Time Series of USD Exchange Rate(Buying)",
+            subtitle="Between the Years 2014-2022")
+  
+  ggplot(hw1data,aes(x=Date))+
+    geom_line(size=1,color="purple",aes(y=`Residential Property Price Index`))+
+    ggtitle("Time Series of Residential Property Price Index",
+            subtitle="Between the Years 2014-2022")
+```
+
+When the line plots are observed, it can be seen that there is a linear trend for all three of them even though they experience fluctuations from time to time. This may indicate overall relevancy, however more observations need to be made.
+
+
+```{r plots2, echo=FALSE,warning=FALSE, message=FALSE}
+ #Density plots
+  ggplot(hw1data,aes(x=Date))+
+    geom_line(size=1,color="green",aes(y=`Unemployement Rate`))+
+    ggtitle("Time Series of Unemployement Rate",
+            subtitle="Between the Years 2014-2022")
+  
+  ggplot(hw1data,aes(x=Date))+
+    geom_line(size=1,color="pink",aes(y=`USD Exchange Rate(Buying)`))+
+    ggtitle("Time Series of USD Exchange Rate(Buying)",
+            subtitle="Between the Years 2014-2022")
+  
+  ggplot(hw1data,aes(x=Date))+
+    geom_line(size=1,color="purple",aes(y=`Residential Property Price Index`))+
+    ggtitle("Time Series of Residential Property Price Index",
+            subtitle="Between the Years 2014-2022")
+```
+
+Another visualization technique is density plots. However, a certain conclusion cannot be derived from these plots.
+
+```{r plots3, echo=FALSE,warning=FALSE, message=FALSE}
+ ggcorrplot(corr = cor(data_xts),
+             hc.order = TRUE,
+             outline.col = "white",
+             type = "upper", lab = TRUE,
+             title = "Correlation Matrix",
+             colors = c("red","white","green"),
+             legend.title = "Correlation",
+             ggtheme = theme_void)
+```
+
+Correlation scheme reveals some important properties. It is seen that exchange rate and RPPI have high positive correlation. However, unemployement rate does not seem to highly correlate with RPPI. 
+## 3. Conclusion
+In the beginning of the assignment, it was thought that all these three datasets were correlated to some extent. While USD/TRY exchange rate and RPPI turned out to be so, other two correlation values were not satisfactory as predicted. There might many reasons why this happened, such as unexpected turn of events and other factors in the economy etc.
+
+
+## 4. References
+
+[Google Trends](https://trends.google.com/trends/?geo=TR)
+[Electronic Data Delivery System](https://evds2.tcmb.gov.tr/)

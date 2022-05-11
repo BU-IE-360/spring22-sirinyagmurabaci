@@ -1,0 +1,289 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Introduction
+
+The main purpose of this assignment is to come up with a suitable linear regression model to forecast the number of unleaded gasoline sale(in 1000 m3) in a given quarter(UGS) for four quarters in the year 2007, by making use of the quarterly UGS data obtained between years 2000-2006. In order to derive an adequate and reasonable linear regression model, several steps were taken. First of all, time series of UGS and its autocorrelation function were plotted and several relevant comments were made. Then, various components such as trend and seasonality were chosen as factors affecting the number of UGS. In the third step, useful independent variables were chosen via correlation analyses to further improve the linear regression model. Finally, after constructing the final linear regression model, the next four quarters were forecasted.
+
+In the remaining part of this assignment, some variables will be given with their abbreviations in order to make this report seem as little crowded as possible. Abbreviations and their full forms are given below.
+
+**UGS:** Unleaded gasoline sale(in 1000 m^3) in a given quarter
+
+**NLPG:** Number of LPG vehicles
+
+**RNUV:** An index indicating the rate of new unleaded gasoline using vehicles being added to the traffic in a quarter
+
+**PU:** Average price (adjusted with an index) of a liter of unleaded gasoline in a quarter
+
+**PG:** Average price (adjusted with an index) of a liter of diesel gasoline in a quarter
+
+**NUGV:** Number of unleaded gasoline using vehicles in the traffic
+
+**NDGV:** Number of diesel gasoline using vehicles in the traffic (per 1000 people) 
+
+**GNPA:** Agriculture component of Gross National Product (adjusted with an index)
+
+**GNPC:** Commerce component of Gross National Product (adjusted with an index)
+
+**GNP:** Grand total for GNP (agriculture, commerce and other components total)
+
+## 2. Plotting the Time Series and ACF 
+
+The number of unleaded gasoline sales in Turkey with respect to time can be plotted as in the following:
+
+```{r, fig.align='center', warning=FALSE, message=FALSE}
+library(forecast)   
+library(xts) 
+library(zoo)
+library(ggplot2)
+library(data.table)
+library(roll)
+library(GGally)
+
+hw2data <- read.csv("C:/Users/lenovo/Desktop/IE360_Spring22_HW2_data (1).csv",colClasses  = c("character", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric","numeric","numeric","numeric","numeric"))
+colnames(hw2data) <- c("Quarter","UGS","RNUV","NLPG","PU","PG","NUGV","NDGV","GNPA","GNPC","GNP")
+mydata <- hw2data[c(1:28),]
+mydata_test <- hw2data[c(29:32),]
+mydata <- data.table(mydata)
+
+mydata$Quarter=as.Date(as.yearqtr(mydata$Quarter, format = "%Y_Q%q"))
+
+ggplot(mydata,aes(x=Quarter)) +
+  geom_line(aes(y=UGS, group = 1))
+```
+
+First of all, after observing the time series plot, it can be concluded that the data shows an overall negative trend, meaning the data values seem to be climbing down with white noise. To account for the trend, it is logical to include a trend component in the model. Negative trend essentially means that data mean decreases over time, which indicates that the data mean is non-stationary. On the other hand, when we look at the variance, it doesn't change drastically over the specified time period, it almost stays the same. Due to this, it can be said that data variance is stationary. However, the overall time series is not stationary since its mean is clearly non-stationary. In order to back this claim, rolling mean and variance plots can be given.
+
+```{r, echo=FALSE,fig.align='center',warning=FALSE, message=FALSE}
+mean_mydata=roll_mean(mydata$UGS,4)
+var_mydata=roll_var(mydata$UGS,4)
+plot(mean_mydata,
+     type='l',col='blue',
+     xlab = "Quarter",
+     ylab = "Rolling Mean", 
+     main = "Mean series")
+plot(var_mydata,
+     type='l',col='green',
+     xlab = "Quarter",
+     ylab = "Rolling Variance",
+     main = "Variance series")
+```
+
+As it has been stated before, mean decreases as quarters increase, hence it is not stationary. But variance can be regarded as stationary, since it mostly stays the same throughout time.
+
+Moreover, in the first quarters of each year, UGS data is almost always low when compared to the other three quarters of that year. This indicates seasonality in our data, and it is logical to include this factor using a quarter variable.
+
+In addition, the corresponding autocorrelation function can be plotted as follows:
+
+```{r, include=TRUE, fig.align='center',echo=FALSE}
+mydata_ts <- ts(mydata$UGS[1:28], frequency = 4,start=c(2000,1))
+acf(mydata_ts)
+```
+Autocorrelation function is an indicator of seasonality that may exist in time series data. It can be seen that there is a positive correlation in lag 1 and lag 4. Correlation in lag 4 supports the seasonality claim made above, which stated that this time series data has a seasonality component.
+Since the correlation in lag 1 is undesirable, a lagged variable can be added to the model.
+
+## 3. Constructing the Linear Regression Model 
+
+After deciding to use trend, seasonality and lagged variables, we can start to build the linear regression model. First of all, a model containing only trend and seasonality variables is constructed.
+
+```{r, echo=FALSE,fig.align='center', warning=FALSE, message=FALSE}
+mydata$trend <- 1:28
+quarter <- seq(1,4, by=1)
+mydata <- cbind(mydata,quarter)
+
+model <- lm(formula = UGS ~ trend + as.factor(quarter), mydata) 
+summary(model)
+checkresiduals(model)
+```
+
+Then, a model containing trend, seasonality and lagged variables is constructed. 
+
+```{r, echo=FALSE,fig.align='center', warning=FALSE, message=FALSE}
+mydata$lag1 <- c(NA,mydata$UGS[1:27])
+model <- lm(formula = UGS ~ trend + as.factor(quarter) + lag1, mydata) 
+summary(model)
+checkresiduals(model)
+```
+
+### 3.1 Choosing New Variables
+Aside from trend, seasonality and lagged variables, there may be some independent variables that can improve the linear regression model. In order to choose significant independent variables among the given eight options(which are abbreviated as RNUV, NLPG, PU, PG, NUGV, NDGV, GNPA, GNPC, GNP), correlation between UGS and other given variables need to be checked.
+
+```{r, echo=FALSE,fig.align='center',fig.height=12, fig.width= 12, warning=FALSE, message=FALSE}
+ggpairs(mydata, lower = list(continuous = "smooth"),upper = list(continuous = wrap("cor", size = 2)),cardinality_threshold=NULL)
+```
+
+Among the eight variables, NUGV,NLPG and GNPA are the most correlated variables with UGS, whereas PG, NDGV and PU comes in second. As a starting point, I chose NUGV and PG. After adding these variables to the linear regression model, the model becomes:
+
+```{r, echo=FALSE,warning=FALSE, fig.align='center', message=FALSE}
+model <- lm( formula = UGS ~ trend + as.factor(quarter) + PG + NUGV + lag1, mydata)
+summary(model)
+checkresiduals(model)
+```
+In this model, it can be observed that there is no significant correlation between the residuals. Adjusted R^2 value is good, but open to improvement. However, the main issue is that most of the variables don't have any significance. As a next step, NLPG and NDGV can be added to the model to see if it improves.
+
+```{r, echo=FALSE,warning=FALSE, fig.align='center', message=FALSE}
+model <- lm( formula = UGS ~ trend + as.factor(quarter) + NLPG + NDGV + NUGV + PG + lag1, mydata)
+summary(model)
+checkresiduals(model)
+```
+
+In this new model, adjusted R^2 value has increased a lot. Residuals seem to be distributed with mean zero and constant variance, and they almost fit to the normal distribution. In addition, there seems no autocorrelation between the residuals. When compared to the previous model, the important difference is that every variable except trend has a degree of significance. To see if the model is better off without the trend variable, a new model excluding trend is constructed.
+
+```{r, echo=FALSE,warning=FALSE, fig.align='center', message=FALSE}
+model <- lm( formula = UGS ~ as.factor(quarter) + NLPG + NDGV + NUGV + PG + lag1, mydata)
+summary(model)
+checkresiduals(model)
+```
+
+Although adjusted R^2 value has increased very slightly after excluding the trend, residuals seem to be autocorrelated at lag 4. Since this is against the underlying assumptions of the linear regression model, a lag 4 variable can be added to the model.
+
+```{r, echo=FALSE,warning=FALSE, fig.align='center', message=FALSE}
+mydata$lag4 <- c(NA,NA,NA,NA, mydata$UGS[1:24])
+model <- lm( formula = UGS ~ as.factor(quarter) + NLPG + NDGV + NUGV + PG + lag1 + lag4, mydata)
+summary(model)
+checkresiduals(model)
+```
+
+In this updated model, lag 4 seems to have no significance and adjusted R^2 value dropped significantly when compared to the second model. To see if the problem will be resolved if we excluded lag 1, another model is constructed.
+
+```{r, echo=FALSE,warning=FALSE, fig.align='center', message=FALSE}
+final_model <- lm( formula = UGS ~ as.factor(quarter) + NLPG + NDGV + NUGV + PG + lag4, mydata)
+summary(model)
+checkresiduals(model)
+```
+
+From this model, it can be seen clearly that if lag 1 is excluded, residuals turn out to be autocorrelated at lag 1. As a result, excluding lag 1 is not appropriate.
+
+Before stating the final linear regression model, it is important to point out the fact that there can be many combinations of this linear regression model. However, analyzing each of them would make this report very long. Due to this, I analyzed various models and after obtaining enough significance of the variables and a good adjusted R^2 value, I concluded the model selection process. The reason why more independent variables are not added to the model is that the more variables we add to the system, more likely that the other variables will lose significance since some variables can also be correlated within themselves. In addition, another aim in constructing a linear regression model is to make it as simple as possible. 
+
+### 3.2 Final Regression Model
+
+Out of all the regression models, the model given below turned out to be the most suitable one. 
+
+```{r, message=FALSE, fig.align='center', warning=FALSE}
+final_model <- lm(formula = UGS ~ trend + as.factor(quarter) + NLPG + NDGV + NUGV + PG + lag1, mydata)
+summary(final_model)
+checkresiduals(final_model)
+```
+
+First of all, all the variables except trend are significant to some extent. Even though NLPG has the smallest significance, the model's adjusted R^2 value drops when it is excluded from the model. Trend variable may have no significance but in the previous part, the model was worse off when the trend was excluded, meaning the residuals were correlated. For the sake of holding one of the base assumptions (which is residuals must not be correlated), trend variable is kept in the model. 
+When it comes to the residual analysis of this final model, it can be said that there is no significant correlation between the residuals, they almost fit to a normal distribution, they have nearly zero mean and nearly constant variance. Even though the variance seems to be increasing at the very end, it can be disregarded since it does not compromise the model.
+As a result, this model can be selected as a final linear regression model.
+
+### 3.3 Residual Analysis
+
+Before moving on to the prediction, another residual analysis can be conducted to make sure our model is suitable. Down below, residuals versus the regressor variables are plotted.
+
+```{r, include=TRUE, fig.align='center', echo=FALSE}
+plot(x = mydata$UGS[1:28], y = model$residuals[1:28], col = "darkblue",
+     main = "Residuals vs. UGS",
+     xlab = "UGS",
+     ylab = "Residuals")
+```
+
+```{r, include=TRUE, fig.align='center', echo=FALSE}
+plot(x = mydata$trend[1:28], y = model$residuals[1:28], col = "darkblue",
+     main = "Residuals vs. Trend",
+     xlab = "Trend",
+     ylab = "Residuals")
+```
+
+```{r, include=TRUE, fig.align='center', echo=FALSE}
+plot(x = mydata$Quarter[1:28], y = model$residuals[1:28], col = "darkblue",
+     main = "Residuals vs. Quarter",
+     xlab = "Quarter",
+     ylab = "Residuals")
+```
+
+```{r, include=TRUE, fig.align='center', echo=FALSE}
+plot(x = mydata$NDGV[1:28], y = model$residuals[1:28], col = "darkblue",
+     main = "Residuals vs. NDGV",
+     xlab = "NDGV",
+     ylab = "Residuals")
+```
+
+```{r, include=TRUE, fig.align='center', echo=FALSE}
+plot(x = mydata$PG[1:28], y = model$residuals[1:28], col = "darkblue",
+     main = "Residuals vs. PG",
+     xlab = "PG",
+     ylab = "Residuals")
+```
+
+```{r, include=TRUE, fig.align='center', echo=FALSE}
+plot(x = mydata$NLPG[1:28], y = model$residuals[1:28], col = "darkblue",
+     main = "Residuals vs. NLPG",
+     xlab = "NLPG",
+     ylab = "Residuals")
+```
+
+```{r, include=TRUE, fig.align='center',echo=FALSE}
+plot(x = mydata$NUGV[1:28], y = model$residuals[1:28], col = "darkblue",
+     main = "Residuals vs. NUGV",
+     xlab = "NUGV",
+     ylab = "Residuals")
+```
+
+It can be said that regressors other than NLPG, NUGV and NDGV generally tend to have a same scattered distribution, resembling a rectangular shape, as in mean zero and constant variance distribution. Residuals vs. NLPG plot does not seem problematic, it again tends to scatter in an uncorrelated way, only slightly accumulated at the beginning and the end of the plot. In residuals vs. NDGV plot, residuals seem to accumulate at the beginning, however in the remaining part of the plot residuals are scattered. Even though this plot is not completely ideal, it does not cause a major problem in the model. If we try to exclude it, adjusted R^2 value drastically drops. So, for the sake of the model's validity, it is best to keep NDGV. In residuals vs NUGV plot, residuals are distributed with mean zero, however they seem slightly accumulated in the middle. Again, since this does not cause any major issues in the overall model, NUGV is not discarded.
+
+## 4. Forecasting with Regression Model
+
+```{r, message=FALSE, warning=FALSE}
+hw2data$trend <- 1:32
+quarter <- seq(1,4, by=1)
+hw2data <- cbind(hw2data,quarter)
+hw2data$lag1 <- c(NA,mydata$UGS[1:28],NA,NA,NA)
+
+test_data <- hw2data[29:32,c("trend","quarter","NLPG","NDGV","NUGV","PG","lag1")]
+
+prediction <- c(0,0,0,0)
+
+prediction[1] <- predict(final_model,newdata = test_data[1,])
+test_data[2,"lag1"] <- prediction[1]
+
+prediction[2] = predict(final_model,newdata = test_data[2,])
+test_data[3,"lag1"] <- prediction[2]
+
+prediction[3] = predict(final_model,newdata = test_data[3,])
+test_data[4,"lag1"] <- prediction[3]
+
+prediction[4] <- predict(final_model,newdata = test_data[4,])
+```
+
+Predicted values of UGS of the next four quarters is given below. Since the model needed lag 1 data, at each iteration I also used the previous quarter's predicted value.
+
+```{r, warning=FALSE, message=FALSE}
+print(prediction)
+```
+## 5. Conclusion
+
+Predicted UGS values and actual UGS values are plotted in the same graph to visually observe the validity of the final linear regression model.
+
+```{r, echo=FALSE,fig.align='center', fig.width=12, warning=FALSE, message=FALSE}
+fitted_values <- predict(final_model,mydata)
+fitted_values[29:32] <- prediction
+hw2data$fitted_values <- fitted_values
+
+hw2data$UGS[29:32] <- c(NA,NA,NA,NA)
+
+ggplot(hw2data,aes(x=Quarter)) +
+  geom_line(aes(y=UGS,color='Real', group = 1)) + 
+  geom_line(aes(y=fitted_values, color = 'Prediction', group = 1) ) 
+```
+
+It can be clearly seen that the linear regression model works well, since it has a very similar shape to the actual time series.
+
+In conclusion, after comparing each of the models obtained, it can be concluded that the linear regression model including NLPG, NDGV, NUGV, PG, trend, seasonality and lag 1 variables is by far the most suitable model due to various reasons. For instance, its adjusted R^2 value is 0.9689, which is an indicator that the variability in the data is well-explained by the model. Secondly, residuals have zero mean and nearly constant variance, and they don't seem to be correlated significantly. 
+
+In this assignment, after choosing the appropriate regressors for the linear regression model with the help of correlation tests, UGS values of the four quarters of 2007 were predicted. 
+
+##   6. Appendices
+[Here](https://bu-ie-360.github.io/fall20-nilufercetin/files/HMW3.Rmd) RMD file written for this assignment including the code chunks can be found.
+
+[Here](https://bu-ie-360.github.io/fall20-araldortogul/files/R-scripts/homework3.R) (.R file). All the R code written can be found. 
+
+
+
+
+
+
