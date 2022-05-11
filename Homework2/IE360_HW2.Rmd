@@ -277,10 +277,6 @@ In conclusion, after comparing each of the models obtained, it can be concluded 
 
 In this assignment, after choosing the appropriate regressors for the linear regression model with the help of correlation tests, UGS values of the four quarters of 2007 were predicted. 
 
-##   6. Appendices
-[Here](https://bu-ie-360.github.io/fall20-nilufercetin/files/HMW3.Rmd) RMD file written for this assignment including the code chunks can be found.
-
-[Here](https://bu-ie-360.github.io/fall20-araldortogul/files/R-scripts/homework3.R) (.R file). All the R code written can be found. 
 
 
 
