@@ -1,3 +1,10 @@
+---
+title: "Homework 2 – Forecasting with Linear Regression"
+subtitle: "Şirin Yağmur Abacı"
+output: html_document
+date: '2022-05-11'
+---
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
