@@ -13,4 +13,3 @@
 
 [Here](Project/sirinyagmurabaci_rmd_project.html) is the HTML file for this homework.
 [Here](Project/sirinyagmurabaci_rmd_project.Rmd) is the RMD file for this homework.
-[Here](Project/projectRcode.Rmd) is the R script file for this homework.
