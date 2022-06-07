@@ -8,3 +8,9 @@
 [Here](Homework2/IE360_HW2_sirinyagmur.Rmd) is the RMD file for this homework.
 
 ### Homework 3
+
+### Project
+
+[Here](Project/sirinyagmurabaci_rmd_project.html) is the HTML file for this homework.
+[Here](Project/sirinyagmurabaci_rmd_project.Rmd) is the RMD file for this homework.
+[Here](Project/projectRcode.Rmd) is the R script file for this homework.
