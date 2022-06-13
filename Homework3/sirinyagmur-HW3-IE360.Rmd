@@ -1,0 +1,836 @@
+---
+title: "Homework 3 - Forecasting Solar Power Production with ARIMA Models"
+author: "Şirin Yağmur Abacı"
+date: '2022-06-13'
+output: html_document
+---
+
+```{r setup, include=FALSE,results="hide", warning=FALSE, message=FALSE}
+library(data.table)
+library(forecast)
+library(ggplot2)
+library(padr)
+library(xts)
+library(dplyr)
+library(tseries)
+library(urca)
+library(astsa)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1 Introduction
+
+The main purpose of this homework is to provide hourly solar power predictions of KIVANC 2 GES from 26 May 2022 to 3 June 2022, by using the production data given two days prior. Every day the actual hourly solar power production data is updated, and the appropriate forecasting is done for the next day.
+
+In this homework, three different models are examined, which are ARIMA modeling for separate hours, SARIMA model for the whole time series assuming frequency of 24 hours and SARIMA model for the whole time series using the most correlated DSWRF value with the production (i.e. single location) as a regressor.
+
+## 2 ARIMA Modeling for Separate Hours
+
+Before starting with this model, the time series plots of the separate hours are plotted below. The hour indexes go from 0 to 23. At first, given data is manipulated into the desired form. There were also some missing data points, which are eliminated by the pad() function.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+data_production <- read.csv("C:/Users/lenovo/Desktop/2022-05-25_production.csv",colClasses=c("Date",rep("numeric",2)))
+
+data_production$date <- as.Date(data_production$date, format = "%Y-%m-%d")
+data_production <- pad(data_production)
+
+data_production_0 <- data_production %>% filter(hour == 0)
+data_production_1 <- data_production %>% filter(hour == 1)
+data_production_2 <- data_production %>% filter(hour == 2)
+data_production_3 <- data_production %>% filter(hour == 3)
+data_production_4 <- data_production %>% filter(hour == 4)
+data_production_5 <- data_production %>% filter(hour == 5)
+data_production_6 <- data_production %>% filter(hour == 6)
+data_production_7 <- data_production %>% filter(hour == 7)
+data_production_8 <- data_production %>% filter(hour == 8)
+data_production_9 <- data_production %>% filter(hour == 9)
+data_production_10 <- data_production %>% filter(hour == 10)
+data_production_11 <- data_production %>% filter(hour == 11)
+data_production_12 <- data_production %>% filter(hour == 12)
+data_production_13 <- data_production %>% filter(hour == 13)
+data_production_14 <- data_production %>% filter(hour == 14)
+data_production_15 <- data_production %>% filter(hour == 15)
+data_production_16 <- data_production %>% filter(hour == 16)
+data_production_17 <- data_production %>% filter(hour == 17)
+data_production_18 <- data_production %>% filter(hour == 18)
+data_production_19 <- data_production %>% filter(hour == 19)
+data_production_20 <- data_production %>% filter(hour == 20)
+data_production_21 <- data_production %>% filter(hour == 21)
+data_production_22 <- data_production %>% filter(hour == 22)
+data_production_23 <- data_production %>% filter(hour == 23)
+
+
+ggplot(data_production_0, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_1, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_2, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_3, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_4, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_5, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_6, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_7, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_8, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_9, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_10, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_11, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_12, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_13, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_14, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_15, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_16, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_17, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_18, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_19, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_20, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_21, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_22, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+ggplot(data_production_23, aes(x = date, y=production)) + geom_line(color="pink") + xlab("Date") +
+  ylab("Production (MW)") +
+  ggtitle("Hourly Solar Power Production Data")
+
+```
+
+As it can be seen in the graphs above, hours 0,1,2,3,4 and 21,22,23 are always zero. That is why I did not include them in this model, but instead I assigned zero to those values. For the other plots, it can be said that most of them deviate over time, meaning they are probably not stationary and will need further transformations. With this in mind, the hourly datas are converted into extended time series format and the corresponding ACF and PACF plots are given below.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+todays_date = as.Date("2022-05-25")
+forecast_date <- todays_date+1
+
+forecast_table=data.table(date=forecast_date,hour=0:23,arima=NA)
+forecast_table$arima=as.numeric(forecast_table$arima)
+
+#ZERO PRODUCTION HOURS are 0,1,2,3,4 and 21,22,23
+
+  forecast_table$arima[1] =0
+  forecast_table$arima[2] =0
+  forecast_table$arima[3] =0
+  forecast_table$arima[4] =0
+  forecast_table$arima[5] =0
+  forecast_table$arima[22] =0
+  forecast_table$arima[23] =0
+  forecast_table$arima[24] =0
+
+#HOUR 5 ARIMA 
+
+dataxts_5 <- xts(data_production_5[,"production"], order.by=data_production_5[,"date"])
+acf(dataxts_5)
+pacf(dataxts_5)
+summary(ur.kpss(dataxts_5))
+
+#Box-Cox transformation
+lambda <- BoxCox.lambda(dataxts_5, method ="guerrero", lower = -1, upper = 2)
+box_5<-BoxCox(dataxts_5,lambda)
+summary(ur.kpss(box_5))
+
+#differencing
+difference_5<-diff(box_5,1)
+summary(ur.kpss(difference_5)) 
+
+plot.xts(difference_5, xlab = "Day", ylab = "Production (MW)",main="Hour 5 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_5=auto.arima(box_5,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_5
+checkresiduals(arima_sep_model_5)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_5,order=c(4,1,2),method="ML")
+prediction_5 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[6] <- InvBoxCox(as.numeric(prediction_5$pred[3]), lambda)
+
+#HOUR 6 ARIMA
+
+dataxts_6 <- xts(data_production_6[,"production"], order.by=data_production_6[,"date"])
+acf(dataxts_6)
+pacf(dataxts_6)
+summary(ur.kpss(dataxts_6))
+
+#Box-Cox transformation
+lambda <- BoxCox.lambda(dataxts_6, method ="guerrero", lower = -1, upper = 2)
+box_6<-BoxCox(dataxts_6,lambda)
+summary(ur.kpss(box_6))
+
+#differencing
+difference_6<-diff(box_6,1)
+summary(ur.kpss(difference_6)) 
+
+plot.xts(difference_6, xlab = "Day", ylab = "Production (MW)",main="Hour 6 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_6=auto.arima(box_6,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_6 
+checkresiduals(arima_sep_model_6)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_6,order=c(0,1,3),method="ML")
+prediction_6 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[7] <- InvBoxCox(as.numeric(prediction_6$pred[3]), lambda)
+
+#HOUR 7 ARIMA
+
+dataxts_7 <- xts(data_production_7[,"production"], order.by=data_production_7[,"date"])
+acf(dataxts_7)
+pacf(dataxts_7)
+summary(ur.kpss(dataxts_7))
+
+#Box-Cox transformation
+lambda <- BoxCox.lambda(dataxts_7, method ="guerrero", lower = -1, upper = 2)
+box_7<-BoxCox(dataxts_7,lambda)
+summary(ur.kpss(box_7))
+
+#differencing 
+difference_7<-diff(box_7,1)
+summary(ur.kpss(difference_7)) 
+
+plot.xts(difference_7, xlab = "Day", ylab = "Production (MW)",main="Hour 7 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_7=auto.arima(box_7,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_7 
+checkresiduals(arima_sep_model_7)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_7,order=c(0,1,1),method="ML")
+prediction_7 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[8] <- InvBoxCox(as.numeric(prediction_7$pred[3]), lambda)
+
+#HOUR 8 ARIMA
+
+dataxts_8 <- xts(data_production_8[,"production"], order.by=data_production_8[,"date"])
+acf(dataxts_8)
+pacf(dataxts_8)
+summary(ur.kpss(dataxts_8))
+
+#Box-Cox transformation
+lambda <- BoxCox.lambda(dataxts_8, method ="guerrero", lower = -1, upper = 2)
+box_8<-BoxCox(dataxts_8,lambda)
+summary(ur.kpss(box_8))
+
+#differencing
+difference_8<-diff(box_8,1)
+summary(ur.kpss(difference_8)) 
+
+plot.xts(difference_8, xlab = "Day", ylab = "Production (MW)",main="Hour 8 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_8=auto.arima(box_8,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_8 
+checkresiduals(arima_sep_model_8)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_8,order=c(1,1,1),method="ML")
+prediction_8 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[9] <- InvBoxCox(as.numeric(prediction_8$pred[3]), lambda)
+
+#HOUR 9 ARIMA
+
+dataxts_9 <- xts(data_production_9[,"production"], order.by=data_production_9[,"date"])
+acf(dataxts_9)
+pacf(dataxts_9)
+summary(ur.kpss(dataxts_9))
+
+#Box-Cox transformation
+lambda <- BoxCox.lambda(dataxts_9, method ="guerrero", lower = -1, upper = 2)
+box_9<-BoxCox(dataxts_9,lambda)
+summary(ur.kpss(box_9))
+
+#differencing
+difference_9<-diff(box_9,1)
+summary(ur.kpss(difference_9)) 
+
+plot.xts(difference_9, xlab = "Day", ylab = "Production (MW)",main="Hour 9 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_9=auto.arima(box_9,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_9 
+checkresiduals(arima_sep_model_9)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_9,order=c(1,1,1),method="ML")
+prediction_9 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[10] <- InvBoxCox(as.numeric(prediction_9$pred[3]), lambda)
+
+#HOUR 10 ARIMA
+
+dataxts_10 <- xts(data_production_10[,"production"], order.by=data_production_10[,"date"])
+acf(dataxts_10)
+pacf(dataxts_10)
+summary(ur.kpss(dataxts_10))
+
+#Box-Cox transformation
+lambda <- BoxCox.lambda(dataxts_10, method ="guerrero", lower = -1, upper = 2)
+box_10<-BoxCox(dataxts_10,lambda)
+summary(ur.kpss(box_10))
+
+#differencing
+difference_10<-diff(box_10,1)
+summary(ur.kpss(difference_10)) 
+
+plot.xts(difference_10, xlab = "Day", ylab = "Production (MW)",main="Hour 10 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_10=auto.arima(box_10,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_10 
+checkresiduals(arima_sep_model_10)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_10,order=c(0,1,2),method="ML")
+prediction_10 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[11] <- InvBoxCox(as.numeric(prediction_10$pred[3]), lambda)
+
+#HOUR 11 ARIMA
+
+dataxts_11 <- xts(data_production_11[,"production"], order.by=data_production_11[,"date"])
+acf(dataxts_11)
+pacf(dataxts_11)
+summary(ur.kpss(dataxts_11))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_11, method ="guerrero", lower = -1, upper = 2)
+box_11<-BoxCox(dataxts_11,lambda)
+summary(ur.kpss(box_11))
+
+#differencing 
+difference_11<-diff(box_11,1)
+summary(ur.kpss(difference_11)) 
+
+plot.xts(difference_11, xlab = "Day", ylab = "Production (MW)",main="Hour 11 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_11=auto.arima(box_11,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_11 
+checkresiduals(arima_sep_model_11)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_11,order=c(0,1,2),method="ML")
+prediction_11 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[12] <- InvBoxCox(as.numeric(prediction_11$pred[3]), lambda)
+
+#HOUR 12 ARIMA
+
+dataxts_12 <- xts(data_production_12[,"production"], order.by=data_production_12[,"date"])
+acf(dataxts_12)
+pacf(dataxts_12)
+summary(ur.kpss(dataxts_12))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_12, method ="guerrero", lower = -1, upper = 2)
+box_12<-BoxCox(dataxts_12,lambda)
+summary(ur.kpss(box_12))
+
+#differencing 
+difference_12<-diff(box_12,1)
+summary(ur.kpss(difference_12)) 
+
+plot.xts(difference_12, xlab = "Day", ylab = "Production (MW)",main="Hour 12 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_12=auto.arima(box_12,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_12 
+checkresiduals(arima_sep_model_12)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_12,order=c(0,1,2),method="ML")
+prediction_12 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[13] <- InvBoxCox(as.numeric(prediction_12$pred[3]), lambda)
+
+#HOUR 13 ARIMA
+
+dataxts_13 <- xts(data_production_13[,"production"], order.by=data_production_13[,"date"])
+acf(dataxts_13)
+pacf(dataxts_13)
+summary(ur.kpss(dataxts_13))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_13, method ="guerrero", lower = -1, upper = 2)
+box_13<-BoxCox(dataxts_13,lambda)
+summary(ur.kpss(box_13))
+
+#differencing 
+difference_13<-diff(box_13,1)
+summary(ur.kpss(difference_13)) 
+
+plot.xts(difference_13, xlab = "Day", ylab = "Production (MW)",main="Hour 13 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_13=auto.arima(box_13,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_13 
+checkresiduals(arima_sep_model_13)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_13,order=c(0,1,2),method="ML")
+prediction_13 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[14] <- InvBoxCox(as.numeric(prediction_13$pred[3]), lambda)
+
+#HOUR 14 ARIMA
+
+dataxts_14 <- xts(data_production_14[,"production"], order.by=data_production_14[,"date"])
+acf(dataxts_14)
+pacf(dataxts_14)
+summary(ur.kpss(dataxts_14))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_14, method ="guerrero", lower = -1, upper = 2)
+box_14<-BoxCox(dataxts_14,lambda)
+summary(ur.kpss(box_14))
+
+#differencing 
+difference_14<-diff(box_14,1)
+summary(ur.kpss(difference_14))
+
+plot.xts(difference_14, xlab = "Day", ylab = "Production (MW)",main="Hour 14 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_14=auto.arima(box_14,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_14 
+checkresiduals(arima_sep_model_14)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_14,order=c(0,1,4),method="ML")
+prediction_14 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[15] <- InvBoxCox(as.numeric(prediction_14$pred[3]), lambda)
+
+#HOUR 15 ARIMA
+
+dataxts_15 <- xts(data_production_15[,"production"], order.by=data_production_15[,"date"])
+acf(dataxts_15)
+pacf(dataxts_15)
+summary(ur.kpss(dataxts_15))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_15, method ="guerrero", lower = -1, upper = 2)
+box_15<-BoxCox(dataxts_15,lambda)
+summary(ur.kpss(box_15))
+
+#differencing 
+difference_15<-diff(box_15,1)
+summary(ur.kpss(difference_15)) 
+
+plot.xts(difference_15, xlab = "Day", ylab = "Production (MW)",main="Hour 15 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_15=auto.arima(box_15,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_15 
+checkresiduals(arima_sep_model_15)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_15,order=c(0,1,2),method="ML")
+prediction_15 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[16] <- InvBoxCox(as.numeric(prediction_15$pred[3]), lambda)
+
+#HOUR 16 ARIMA
+
+dataxts_16 <- xts(data_production_16[,"production"], order.by=data_production_16[,"date"])
+acf(dataxts_16)
+pacf(dataxts_16)
+summary(ur.kpss(dataxts_16))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_16, method ="guerrero", lower = -1, upper = 2)
+box_16<-BoxCox(dataxts_16,lambda)
+summary(ur.kpss(box_16))
+
+#differencing 
+difference_16<-diff(box_16,1)
+summary(ur.kpss(difference_16)) 
+
+plot.xts(difference_16, xlab = "Day", ylab = "Production (MW)",main="Hour 16 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_16=auto.arima(box_16,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_16 
+checkresiduals(arima_sep_model_16)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_16,order=c(0,1,3),method="ML")
+prediction_16 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[17] <- InvBoxCox(as.numeric(prediction_16$pred[3]), lambda)
+
+#HOUR 17 ARIMA
+
+dataxts_17 <- xts(data_production_17[,"production"], order.by=data_production_17[,"date"])
+acf(dataxts_17)
+pacf(dataxts_17)
+summary(ur.kpss(dataxts_17))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_17, method ="guerrero", lower = -1, upper = 2)
+box_17<-BoxCox(dataxts_17,lambda)
+summary(ur.kpss(box_17))
+
+#differencing 
+difference_17<-diff(box_17,1)
+summary(ur.kpss(difference_17)) 
+
+plot.xts(difference_17, xlab = "Day", ylab = "Production (MW)",main="Hour 17 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_17=auto.arima(box_17,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_17 
+checkresiduals(arima_sep_model_17)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_17,order=c(0,1,3),method="ML")
+prediction_17 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[18] <- InvBoxCox(as.numeric(prediction_17$pred[3]), lambda)
+
+#HOUR 18 ARIMA
+
+dataxts_18 <- xts(data_production_18[,"production"], order.by=data_production_18[,"date"])
+acf(dataxts_18)
+pacf(dataxts_18)
+summary(ur.kpss(dataxts_18))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_18, method ="guerrero", lower = -1, upper = 2)
+box_18<-BoxCox(dataxts_18,lambda)
+summary(ur.kpss(box_18))
+
+#differencing 
+difference_18<-diff(box_18,1)
+summary(ur.kpss(difference_18))
+
+plot.xts(difference_18, xlab = "Day", ylab = "Production (MW)",main="Hour 18 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_18=auto.arima(box_18,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_18 
+checkresiduals(arima_sep_model_18)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_18,order=c(0,1,3),method="ML")
+prediction_18 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[19] <- InvBoxCox(as.numeric(prediction_18$pred[3]), lambda)
+
+#HOUR 19 ARIMA
+
+dataxts_19 <- xts(data_production_19[,"production"], order.by=data_production_19[,"date"])
+acf(dataxts_19)
+pacf(dataxts_19)
+summary(ur.kpss(dataxts_19))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_19, method ="guerrero", lower = -1, upper = 2)
+box_19<-BoxCox(dataxts_19,lambda)
+summary(ur.kpss(box_19))
+
+#differencing 
+difference_19<-diff(box_19,1)
+summary(ur.kpss(difference_19)) 
+
+plot.xts(difference_19, xlab = "Day", ylab = "Production (MW)",main="Hour 19 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_19=auto.arima(box_19,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_19 
+checkresiduals(arima_sep_model_19)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_19,order=c(3,1,4),method="ML")
+prediction_19 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[20] <- InvBoxCox(as.numeric(prediction_19$pred[3]), lambda)
+
+#HOUR 20 ARIMA
+
+dataxts_20 <- xts(data_production_20[,"production"], order.by=data_production_20[,"date"])
+acf(dataxts_20)
+pacf(dataxts_20)
+summary(ur.kpss(dataxts_20))
+
+#Box-Cox transformation 
+lambda <- BoxCox.lambda(dataxts_20, method ="guerrero", lower = -1, upper = 2)
+box_20<-BoxCox(dataxts_20,lambda)
+summary(ur.kpss(box_20))
+
+#differencing 
+difference_20<-diff(box_20,1)
+summary(ur.kpss(difference_20)) 
+
+plot.xts(difference_20, xlab = "Day", ylab = "Production (MW)",main="Hour 20 Solar Power Production Data after Box-Cox Transformation and Differencing Applied")
+arima_sep_model_20=auto.arima(box_20,d=1,seasonal=F,stepwise=T,approximation=T,trace=T)
+arima_sep_model_20 
+checkresiduals(arima_sep_model_20)
+
+lambda <- as.numeric(lambda)
+fitARIMA <- arima(box_20,order=c(5,1,0),method="ML")
+prediction_20 <- predict(fitARIMA,n.ahead = 3)
+forecast_table$arima[21] <- InvBoxCox(as.numeric(prediction_20$pred[3]), lambda)
+
+forecast_table
+```
+
+In the ACF and PACF plots, there are lags that exceed the recommended value, meaning some data are correlated. So, this indicates that the data is not stationary. In order to do ARIMA modelling, the time series need to be stationary, which essentially means that the time series does not depend on time and its variance does not change over time. That is the reason why the ARIMA modelling starts with KPSS test first. According to the KPSS test, the data turned out to be non-stationary. Then, Box-Cox transformation is done. Again KPSS test is applied, but the transformed time series were not stationary again, so differencing method is used. The ARIMA model parameters are found by using auto.arima() function. For each hourly data except the zero production hours, the found ARIMA models' residuals are checked. When each residual plot is analyzed, not all of them look like white noise, but since they are not big errors, I chose to ignore them. Also it is important to note that this is the forecast for only 26 May 2022. For the remaining days, I ran the code by changing the date value and then combined the forecasted values into a vector below.
+
+```{r final forecast, echo=FALSE,warning=FALSE, message=FALSE}
+
+final_forecast=data.table(date="2022-05-26",hour=0:23,arima=NA)
+#final_forecast$arima=as.numeric(forecast_table2$arima)
+forecast_table2=data.table(date="2022-05-27",hour=0:23,arima=NA)
+forecast_table2$arima=as.numeric(forecast_table2$arima)
+final_forecast <- rbind(final_forecast,forecast_table2)
+
+forecast_table2=data.table(date="2022-05-28",hour=0:23,arima=NA)
+forecast_table2$arima=as.numeric(forecast_table2$arima)
+final_forecast <- rbind(final_forecast,forecast_table2)
+
+forecast_table2=data.table(date="2022-05-29",hour=0:23,arima=NA)
+forecast_table2$arima=as.numeric(forecast_table2$arima)
+final_forecast <- rbind(final_forecast,forecast_table2)
+
+forecast_table2=data.table(date="2022-05-30",hour=0:23,arima=NA)
+forecast_table2$arima=as.numeric(forecast_table2$arima)
+final_forecast <- rbind(final_forecast,forecast_table2)
+
+forecast_table2=data.table(date="2022-05-31",hour=0:23,arima=NA)
+forecast_table2$arima=as.numeric(forecast_table2$arima)
+final_forecast <- rbind(final_forecast,forecast_table2)
+
+forecast_table2=data.table(date="2022-06-01",hour=0:23,arima=NA)
+forecast_table2$arima=as.numeric(forecast_table2$arima)
+final_forecast <- rbind(final_forecast,forecast_table2)
+
+forecast_table2=data.table(date="2022-06-02",hour=0:23,arima=NA)
+forecast_table2$arima=as.numeric(forecast_table2$arima)
+final_forecast <- rbind(final_forecast,forecast_table2)
+
+forecast_table2=data.table(date="2022-06-03",hour=0:23,arima=NA)
+forecast_table2$arima=as.numeric(forecast_table2$arima)
+final_forecast <- rbind(final_forecast,forecast_table2)
+
+
+final_forecast$arima <- c(0.0000000,  0.0000000,  0.0000000,  0.0000000,  0.0000000,  0.1192190,  6.5347874, 25.3097093, 31.8310197, 32.1608702, 34.0857430, 34.1727772, 33.4542150, 30.1449889, 28.1285354, 26.1497283, 22.8237464, 14.8639103,5.9916079,  0.8968618,  0.0000000 , 0.0000000 , 0.0000000  ,0.0000000 , 0.0000000,0.0000000 , 0.0000000,
+0.0000000,  0.0000000 , 0.1350934,  6.6994187, 25.8450817, 32.1814597, 31.8677004 ,33.5181435, 34.1318720,
+  33.1978305, 31.0668153 ,30.7613293, 25.9775688 ,23.7786220, 14.2116916,  6.3082226 , 0.9928818, 0.0000000,
+   0.0000000 , 0.0000000 , 0.0000000 , 0.0000000,  0.0000000 , 0.0000000 , 0.0000000 , 0.0000000 , 0.1646944,
+   6.6362292, 25.6736290, 32.7345825, 32.7588815, 34.3010630, 34.4199703 ,33.8554929 ,31.3168310, 30.0621879,
+  25.4397953 ,22.2074537, 15.1803551,  7.4404515, 1.2412700 , 0.0000000 , 0.0000000 , 0.0000000,  0.0000000,
+0.0000000 , 0.0000000 , 0.0000000 , 0.0000000 , 0.0000000 , 0.1769908 , 6.9656378 ,25.9513394 ,32.9699721
+ , 32.4485111, 33.8035311 ,34.3234761, 33.6020579, 31.8145980, 31.6837727, 25.6039310 ,23.3065988,16.2077078
+  ,8.9616078 , 1.2660121 , 0.0000000,  0.0000000 , 0.0000000 , 0.0000000,
+
+   0.0000000, 0.0000000, 0.0000000,  0.0000000,  0.0000000 , 0.1986676 , 6.9348147, 25.7882906, 33.3879731,
+ 33.2342797, 34.4709245, 34.5725516 ,34.1482151, 32.1876499 ,31.6076858, 27.0376629, 19.2120017, 12.5960457,
+   4.6438314,  1.1746642 , 0.0000000 , 0.0000000 , 0.0000000 , 0.0000000 , 0.0000000 , 0.0000000 , 0.0000000,
+  0.0000000,  0.0000000 , 0.1607180,  6.9807239 ,25.8735247, 33.5426883 ,32.9247365, 34.0373247, 34.4752039,
+ 33.9169708, 32.5288234, 32.0889596, 26.7207401, 20.3428208 ,13.8054722 , 7.4227949 , 1.3235410 , 0.0000000,
+  0.0000000,  0.0000000,  0.0000000,  0.0000000,  0.0000000,  0.0000000 , 0.0000000,  0.0000000 , 0.1795158,
+  7.0693137, 25.9270812, 33.8552475 ,33.6103501, 34.5987251, 34.6845745, 34.3657537, 32.8256310, 32.1622244,
+ 28.3501770, 20.4435238 ,14.6311825,  7.1265283,  1.3812921,  0.0000000 , 0.0000000 , 0.0000000,  0.0000000,
+  0.0000000,  0.0000000 , 0.0000000 , 0.0000000,  0.0000000,  0.2302344 , 6.9909133, 25.5350845, 33.9557512,
+ 33.3099159 ,34.4073722, 35.0573914 ,34.5736610, 33.5378588 ,33.4215298 ,28.4003100, 22.2104496, 15.9134763,
+  9.3307743,  0.1616273 , 0.0000000,  0.0000000 , 0.0000000 , 0.0000000, 0.0000000 , 0.0000000 , 0.0000000,
+  0.0000000,  0.0000000 , 0.2165860,  6.9496156, 25.5553514, 34.8707202 ,34.4867621, 35.4836362, 35.7797103,
+ 35.3730393, 34.0788871, 33.7838470, 30.1321721, 23.7028354 ,17.4246244,  9.4478688 , 0.2262208 , 0.0000000,
+  0.0000000, 0.0000000 , 0.0000000)
+
+final_forecast
+```
+
+After printing the final forecast data, it is also useful to analyze error statistics.
+
+```{r error, echo=FALSE,warning=FALSE, message=FALSE}
+
+library(knitr)
+
+statistics <- function(actual, forecasted){
+  n=length(actual)
+  error = actual - forecasted
+  mean = mean(actual)
+  sd = sd(actual)
+  bias = sum(error) / sum(actual)
+  mad = sum(abs(error)) / n
+  wmape = mad / mean
+  l = data.frame(n, mean, sd, bias, mad, wmape)
+  colnames(l) <- c("N", "Mean", "Standard Deviation", "Bias", "MAD", "WMAPE")
+  return(l)
+}
+
+data_production_final <- read.csv("C:/Users/lenovo/Desktop/2022-06-05_production.csv",colClasses=c("Date",rep("numeric",2)))
+data_production_final=data_production_final[c(11353:11568),]
+data_production_final$date <- as.Date(data_production_final$date, format = "%Y-%m-%d")
+  
+kable(statistics(data_production_final$production, final_forecast$arima),
+      caption = "Statistics for Hourly Solar Power Production using ARIMA", align = 'c')
+```
+
+WMAPE statistic is an important measurement to look for in terms of model performance. This WMAPE value is small, and hence it can be concluded that this model is valid.
+
+# 3 SARIMA Modeling
+
+SARIMA modeling for the whole time series is done below. The KPSS test reveals that the data is not stationary, however I could not do the differencing method for this model, that is why it may be prone to some errors.
+
+Again, I ran the code multiple times with different dates to obtain the forecast data for the competition phase time period. 
+Important Note: The sarima_model was obtained to be ARIMA(2,0,1)(2,1,0)[24] with drift in the original R code, however it took too long to compute in the RMD file, that is why I put the commented codes at the end. But I was able to compute the final forecast data regardless.
+
+```{r, echo=FALSE,warning=FALSE, message=FALSE}
+
+forecasted_production=data.table(date="2022-05-27",hour=0:23,production=NA)
+forecast_table2=data.table(date="2022-05-28",hour=0:23,production=NA)
+forecasted_production <- rbind(forecasted_production,forecast_table2)
+forecast_table2=data.table(date="2022-05-29",hour=0:23,production=NA)
+forecasted_production <- rbind(forecasted_production,forecast_table2)
+
+production_with_forecast=rbind(data_production,forecasted_production)
+forecast_table_sarima=data.table(date=forecast_date,hour=0:23,production=NA)
+
+production_series=ts(production_with_forecast$production,frequency=24)
+summary(ur.kpss(production_series))
+
+#sarima_model=auto.arima(production_series,seasonal=T,stepwise=T,approximation=T,trace=T)
+
+#forecast_ahead=nrow(forecast_table_sarima)
+#sarima_forecast=forecast(sarima_model,h=forecast_ahead)
+
+#forecast_table_sarima[,sarima:=tail(sarima_forecast$mean,24)]
+
+#forecast_table_sarima
+```
+
+```{r final forecast sarima, echo=FALSE,warning=FALSE, message=FALSE}
+
+final_forecast_sarima <- c(0.1162341,  0.1235566,  0.1287468,  0.1325634,  0.1353361,  0.3113367,  7.1610356 ,26.3844525, 35.1354915,
+ 35.1392497 ,35.1289192, 35.1419747, 35.1161013, 34.7413522, 33.3145821, 27.4023235, 25.2168704, 21.4118604,
+  9.6324562  ,1.3767815 , 0.1427402,  0.1427529,  0.1427622,  0.1427690,  0.1162341,  0.1235566,  0.1287468,
+  0.1325634,  0.1353361  ,0.3113367,  7.1610356, 26.3844525, 35.1354915, 35.1392497, 35.1289192, 35.1419747,
+ 35.1161013 ,34.7413522, 33.3145821, 27.4023235, 25.2168704, 21.4118604,  9.6324562,  1.3767815,  0.1427402,
+  0.1427529  ,0.1427622 , 0.1427690,  0.1162341,  0.1235566,  0.1287468,  0.1325634,  0.1353361,  0.3113367,
+  7.1610356 ,26.3844525, 35.1354915, 35.1392497, 35.1289192, 35.1419747, 35.1161013, 34.7413522, 33.3145821,
+  27.4023235 ,25.2168704, 21.4118604,  9.6324562,  1.3767815,  0.1427402,  0.1427529,  0.1427622,  0.1427690,
+   0.1162341 , 0.1235566,  0.1287468,  0.1325634,  0.1353361,  0.3113367,  7.1610356, 26.3844525, 35.1354915,
+  35.1392497, 35.1289192, 35.1419747, 35.1161013, 34.7413522, 33.3145821, 27.4023235, 25.2168704, 21.4118604,
+   9.6324562 , 1.3767815,  0.1427402,  0.1427529,  0.1427622,  0.1427690,  0.1162341,  0.1235566,  0.1287468,
+  0.1325634  ,0.1353361,  0.3113367,  7.1610356, 26.3844525, 35.1354915, 35.1392497, 35.1289192, 35.1419747,
+ 35.1161013, 34.7413522, 33.3145821, 27.4023235, 25.2168704, 21.4118604,  9.6324562,  1.3767815,  0.1427402,
+  0.1427529 , 0.1427622,  0.1427690,  0.1162341,  0.1235566,  0.1287468,  0.1325634,  0.1353361,  0.3113367,
+  7.1610356 ,26.3844525, 35.1354915, 35.1392497, 35.1289192, 35.1419747, 35.1161013, 34.7413522, 33.3145821,
+ 27.4023235 ,25.2168704, 21.4118604,  9.6324562,  1.3767815,  0.1427402,  0.1427529,  0.1427622,  0.1427690,
+  0.1162341,  0.1235566,  0.1287468,  0.1325634,  0.1353361,  0.3113367,  7.1610356, 26.3844525, 35.1354915,
+ 35.1392497 ,35.1289192, 35.1419747, 35.1161013, 34.7413522, 33.3145821, 27.4023235, 25.2168704, 21.4118604,
+  9.6324562  ,1.3767815,  0.1427402,  0.1427529,  0.1427622,  0.1427690,  0.1162341,  0.1235566,  0.1287468,
+  0.1325634,  0.1353361,  0.3113367,  7.1610356, 26.3844525, 35.1354915, 35.1392497, 35.1289192, 35.1419747,
+ 35.1161013 ,34.7413522, 33.3145821,27.4023235, 25.2168704, 21.4118604,  9.6324562,  1.3767815,  0.1427402,
+  0.1427529,  0.1427622,  0.1427690,  0.1162341,  0.1235566,  0.1287468,  0.1325634,  0.1353361,  0.3113367,
+  7.1610356 ,26.3844525, 35.1354915, 35.1392497, 35.1289192, 35.1419747, 35.1161013, 34.7413522, 33.3145821,
+ 27.4023235 ,25.2168704, 21.4118604,  9.6324562,  1.3767815,  0.1427402,  0.1427529,  0.1427622,  0.1427690)
+
+final_forecast_sarima
+```
+
+Error statistics for this model are given below.
+
+```{r, echo=FALSE,warning=FALSE, message=FALSE}
+
+kable(statistics(data_production_final$production, final_forecast_sarima),
+      caption = "Statistics for Solar Power Production using SARIMA", align = 'c')
+```
+
+Surprisingly, the WMAPE value turned out to be better than the first ARIMA model.
+
+## 4 ARIMAX Model with One Regressor
+
+In this model, the most correlated DSWRF variable out of nine coordinates is chosen via correlation tests given below.
+
+```{r, echo=FALSE,warning=FALSE, message=FALSE}
+
+data_weather <- read.csv("C:/Users/lenovo/Desktop/2022-05-25_weather.csv")
+data_weather=dcast(data_weather,date+hour~variable+lat+lon,value.var='value')
+
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.25_33, method = "pearson", alternative = "greater")
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.25_33.25, method = "pearson", alternative = "greater")
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.25_33.5, method = "pearson", alternative = "greater")
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.5_33, method = "pearson", alternative = "greater")
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.5_33.25, method = "pearson", alternative = "greater")
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.5_33.5, method = "pearson", alternative = "greater")
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.75_33, method = "pearson", alternative = "greater")
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.75_33.25, method = "pearson", alternative = "greater")
+cor.test(x = data_production$production[1:11616], y = data_weather$DSWRF_36.75_33.5, method = "pearson", alternative = "greater")
+
+```
+
+As a result, most correlated DSWRF variable is "DSWRF_36.75_33". Then, the corresponding ARIMAX model is constructed for the first day. It can be seen that the data is not stationary by looking at the KPSS value. So by using ndiffs() function, I found out that the time series needed order 1 differencing.
+
+```{r, echo=FALSE,warning=FALSE, message=FALSE}
+
+data_production <- read.csv("C:/Users/lenovo/Desktop/2022-05-25_production.csv",colClasses=c("Date",rep("numeric",2)))
+
+data_production$date <- as.Date(data_production$date, format = "%Y-%m-%d")
+data_production <- pad(data_production)
+
+data_production$production %>%
+  ur.kpss() %>%
+  summary()
+ndiffs(data_production$production)
+
+data_production$production %>%
+  diff() %>%
+  ur.kpss() %>%
+  summary()
+
+data_weather <- data_weather[c(1:11310),]
+
+fit <- auto.arima(data_production[,"production"],d=1, xreg=data_weather[,"DSWRF_36.75_33"],
+                    seasonal = FALSE,  
+                    stepwise = FALSE, 
+                    approximation = FALSE)
+checkresiduals(fit)
+
+x_future <- data_weather[,"DSWRF_36.75_33"] %>%
+  mean() %>%
+  rep(72)
+
+x_future
+
+fcast <- fit %>%
+  forecast(xreg= x_future)
+fcast
+```
+
+The actual forecast values are seen in the point forecast column and between rows 49-72. Since these values highly deviate from the other two models and the actual past data, I did not calculate the rest of the forecasts or WMAPE value.
+
+## 5 Conclusion
+
+In this homework, three different models are examined, which are ARIMA modeling for separate hours, SARIMA model for the whole time series assuming frequency of 24 hours and SARIMA model for the whole time series using the most correlated DSWRF value with the production (i.e. single location) as a regressor.
+
+Before constructing the models, the data is visualized by various plots, corresponding ACF and PACF plots are given. In addition, stationarity is checked via KPSS tests and transformations are done in order to make the time series data stationary. The exception is the second model, in which I could not perform differencing. 
+
+Most important comparison parameter is WMAPE statistic, when the two models are compared the second one obtains the lowest WMAPE, even though I have not performed differencing for that. That is why I can't propose an exact statement as to which one is better, but I can state that the two models have low WMAPE values, meaning they can be used as a prediction model. For the third model, I did not calculate the WMAPE values since the data already differed much when compared to others. So, I do not think it is a valid model.
